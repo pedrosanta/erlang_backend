@@ -75,3 +75,15 @@ find_number_of_online_players(SessionId,Players,HostId,OnGoing) ->
             _-> Acc
         end
     end, 0, Players)].
+
+date_string_to_tuple(DateStr) ->
+    [DayStr, MonthStr, YearStr] = string:tokens(DateStr, "/"),
+    Day = list_to_integer(DayStr),
+    Month = list_to_integer(MonthStr),
+    Year = list_to_integer(YearStr),
+    {{Year, Month, Day}, {0, 0, 0}}.
+
+
+format_date_string_without_slashes(DateStr) ->
+    [DayStr, MonthStr, YearStr] = string:tokens(DateStr, "/"),
+    lists:concat([DayStr, "_",MonthStr, "_",YearStr]).

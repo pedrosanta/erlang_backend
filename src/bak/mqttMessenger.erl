@@ -11,7 +11,7 @@ publish(SessionName,Message)->
             Topic = list_to_binary(concat(TopicRoot,SessionName)),
             % remove subsription, leave publish
             %{ok, _, _ReasonCodes} = emqtt:subscribe(ConnPid, {Topic, 1}),
-            io:format("Published in: ~p , <- ~p~n", [Topic, Message]),  % lir reduced msg
+            io:format("========================================================~nPublished in: ~p => ~p~n========================================================~n", [Topic, Message]),
             {ok, _PktId} = emqtt:publish(ConnPid, Topic, Message, 1),
             %{ok, _, _ReasonCode} = emqtt:unsubscribe(ConnPid, Topic),
         

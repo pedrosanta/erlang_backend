@@ -4,18 +4,21 @@
 -export([init/2]).
 
 init(Req0, State) ->
-    Req2 = try
-        <<"POST">> = cowboy_req:method(Req0), % Assert supported type
-        true = cowboy_req:has_body(Req0),
-        cowboy_req:read_body(Req0) of
-        {ok, PostBody, Req1} ->
-            processBody(PostBody, Req1)
+    Req1 = cowboy_req:set_resp_header(<<"access-control-allow-methods">>, <<"GET, OPTIONS">>, Req0),
+    Req2 = cowboy_req:set_resp_header(<<"access-control-allow-origin">>, <<"*">>, Req1),
+    Req3 = cowboy_req:set_resp_header(<<"access-control-allow-headers">>, <<"*">>, Req2),
+    Req4 = try
+        <<"POST">> = cowboy_req:method(Req3), % Assert supported type
+        true = cowboy_req:has_body(Req3),
+        cowboy_req:read_body(Req3) of
+        {ok, PostBody, Req5} ->
+            processBody(PostBody, Req5)
     catch
         _Error:_Reason ->
             Output= list_to_binary(lists:concat(["Bad Request,",<<_Reason>>])),
-            cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, Output, Req0)
+            cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, Output, Req3)
     end,
-    {ok, Req2, State}.
+    {ok, Req4, State}.
 
 
 processBody(PostBody, Req0) ->
@@ -31,10 +34,10 @@ get_game_logs(SessionName, Req0) ->
     try
         Messages = localDB:db_get_logs(SessionName),
         MessagesList = lists:map(fun(Message) -> 
-            lists:concat([Message,"\n\t"])
+            lists:concat([Message,",\n\t"])
             end, 
             Messages),
-            Aux = lists:sublist(MessagesList,string:len(MessagesList)-1)++string:slice(lists:last(MessagesList),0,string:len(lists:last(MessagesList))-1),
+            Aux = lists:sublist(MessagesList,string:len(MessagesList)-1)++string:slice(lists:last(MessagesList),0,string:len(lists:last(MessagesList))-3),
             Reply = list_to_binary(lists:concat(["{",Aux,"}"])),
             cowboy_req:reply(200,#{<<"content-type">> => <<"application/json; charset=utf-8">>},Reply, Req0)
     catch

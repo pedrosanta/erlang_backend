@@ -61,7 +61,7 @@ db_get_logs(GameSessionId) ->
                         M#game_actions.sessionId =:= GameSessionId]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"-",Msg#game_actions.messageBody,"\"\n\t",Msg#game_actions.simValues])
+      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"-",Msg#game_actions.messageBody,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|SimValues\":",Msg#game_actions.simValues])
       end, 
       Results)
   end,
@@ -217,6 +217,19 @@ db_get_user_games(ClientId) ->
 %%%%%%%%%%%%%%%%%%%%%                EXCEL FUNCTIONS                %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+format_cell(Cell) when is_list(Cell) ->
+    "\"" ++ Cell ++ "\"";
+  format_cell(Cell) ->
+    Cell.
+
+format_row(Row) ->
+    lists:flatten([format_cell(Cell) || Cell <- Row]).
+
+write_csv(Device, [Row | Rows]) ->
+    io:format(Device, "~s~n", [format_row(Row)]),
+    write_csv(Device, Rows);
+  write_csv(_, []) -> ok.
+
 export_logs() ->
   RawData= db_get_logs(),
   {ok, FilePath} = application:get_env(gateway, log_file_path),
@@ -227,18 +240,33 @@ export_logs() ->
   write_csv(Device, RawData),
   file:close(Device).
 
-write_csv(Device, [Row | Rows]) ->
-    io:format(Device, "~s~n", [format_row(Row)]),
-    write_csv(Device, Rows);
-  write_csv(_, []) -> ok.
+export_logs_between_dates(DateString, EndDateString) ->
+  StartDate = utils:date_string_to_tuple(DateString),
+  EndDate = utils:date_string_to_tuple(EndDateString),
+  F = fun() ->
+    Query = qlc:q([X || X <- mnesia:table(game_actions),
+                    StartDate =< utils:date_string_to_tuple(X#game_actions.creationDay),
+                    utils:date_string_to_tuple(X#game_actions.creationDay) =< EndDate
+                  ]),
+    Results = qlc:eval(Query),
+    lists:map(fun(Msg) -> 
+      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.messageBody,",",Msg#game_actions.simValues])
+      end, 
+      Results)
+  end,
+  case mnesia:transaction(F) of
+    {atomic,Value} -> 
+      Path = lists:concat(["./logs_",utils:format_date_string_without_slashes(DateString),"_to_",utils:format_date_string_without_slashes(EndDateString),".csv"]),
+      {ok, Device} = file:open(Path, [write]),
 
-format_row(Row) ->
-    lists:flatten([format_cell(Cell) || Cell <- Row]).
+      Headers = string:join(["Day", "Hour", "Server", "Player", "Region", "ActionId", "Body", "Simulation Values"],","),
+      io:format(Device, "~s~n", [Headers]),
+      write_csv(Device, Value),
+      file:close(Device);
+      {aborted,Reason} -> io:format("Mnesia error:~p~n",[Reason])
+  end.
 
-format_cell(Cell) when is_list(Cell) ->
-    "\"" ++ Cell ++ "\"";
-format_cell(Cell) ->
-    Cell.
+  
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -249,10 +277,10 @@ init_DB() ->
   io:format("mnesia starting...~n"),
   try
     mnesia:table_info(game_actions, type),
-    io:format("found games table...~n")
+    io:format("found games logs table...~n")
   catch
     exit: _ ->
-      io:format("creating games table...~n"),
+      io:format("creating games logs table...~n"),
       mnesia:create_table(game_actions, [{attributes, record_info(fields, game_actions)},
           {type, bag},
           {disc_copies, [node()]}])
