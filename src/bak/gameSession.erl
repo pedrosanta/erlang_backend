@@ -281,12 +281,12 @@ session_handler(PlayerDetails, Players, SessionId, PlayersOnline, HostId, GameSt
 heartbeat_Monitor(Server) ->
     {ok, Milliseconds} = application:get_env(gateway, heartbeat_interval),
     % Send heartbeat message to the target process
-    io:format("hearbeat process has come to sniff~n"),
+    io:format("hearbeat process has come to sniff  ~n"),
     timer:sleep(500),
     try 
         global:send(Server, {heartbeat_loop}),
         timer:sleep(Milliseconds),
         heartbeat_Monitor(Server)
     catch _Error:_Reason -> 
-        io:format(lists:concat(["hearbeat process for ", Server, " has died~n"]))
+        io:format(lists:concat(["hearbeat process for ", Server, "died"]))
     end.

@@ -25,7 +25,8 @@ start(_StartType, _StartArgs) ->
             {"/get_logs", logs_handler, []},
             {"/start_game", start_game_handler, []},
             {"/change_profile", change_user_profile_handler, []},
-            {"/heartbeat", player_heartbeat_handler, []}
+            {"/heartbeat", player_heartbeat_handler, []},
+            {"/games_list", game_infos_handler, []}
         ]}
     ]),
 
