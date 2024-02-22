@@ -75,10 +75,16 @@ Vagrant.configure("2") do |config|
     #
     # Steps:
     # 1. Install erlang (lines 1-3)
-    config.vm.provision "shell", inline: <<-SHELL
+    # 2. Install rebar3 (lines 4-7)
+    config.vm.provision "shell", privileged: false, inline: <<-SHELL
       sudo apt-get install -y libncurses5 libsctp1
       wget https://binaries2.erlang-solutions.com/ubuntu/pool/contrib/e/esl-erlang/esl-erlang_25.0.4-1~ubuntu~jammy_amd64.deb
       sudo dpkg -i esl-erlang_25.0.4-1~ubuntu~jammy_amd64.deb
+      git clone https://github.com/erlang/rebar3.git
+      cd rebar3
+      ./bootstrap
+      ./rebar3 local install
+      cd
+      echo 'PATH=$PATH:/home/vagrant/.cache/rebar3/bin' >> .profile
     SHELL
   end
-  
