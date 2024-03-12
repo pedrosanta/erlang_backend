@@ -72,19 +72,27 @@ Vagrant.configure("2") do |config|
     # Enable provisioning with a shell script. Additional provisioners such as
     # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
     # documentation for more information about their specific syntax and use.
-    #
-    # Steps:
-    # 1. Install erlang (lines 1-3)
-    # 2. Install rebar3 (lines 4-7)
     config.vm.provision "shell", privileged: false, inline: <<-SHELL
+      echo "--- STEP 1: Install erlang"
       sudo apt-get install -y libncurses5 libsctp1
       wget https://binaries2.erlang-solutions.com/ubuntu/pool/contrib/e/esl-erlang/esl-erlang_25.0.4-1~ubuntu~jammy_amd64.deb
       sudo dpkg -i esl-erlang_25.0.4-1~ubuntu~jammy_amd64.deb
+      
+      echo "--- STEP 2: Install rebar3"
       git clone https://github.com/erlang/rebar3.git
       cd rebar3
       ./bootstrap
       ./rebar3 local install
       cd
       echo 'PATH=$PATH:/home/vagrant/.cache/rebar3/bin' >> .profile
+
+      echo "--- STEP 3: Install and configure MQTT Broker/Mosquitto"
+      sudo apt-get install -y mosquitto
+      echo "persistence false" | sudo tee -a /etc/mosquitto/conf.d/myconfig.conf
+      echo "#mqtt" | sudo tee -a /etc/mosquitto/conf.d/myconfig.conf
+      echo "listener 9005" | sudo tee -a /etc/mosquitto/conf.d/myconfig.conf
+      echo "protocol mqtt" | sudo tee -a /etc/mosquitto/conf.d/myconfig.conf
+      echo "allow_anonymous true" | sudo tee -a /etc/mosquitto/conf.d/myconfig.conf
+      sudo systemctl restart mosquitto
     SHELL
   end
