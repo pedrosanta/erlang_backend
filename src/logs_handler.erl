@@ -33,13 +33,19 @@ processBody(PostBody, Req0) ->
 get_game_logs(SessionName, Req0) ->
     try
         Messages = localDB:db_get_logs(SessionName),
-        MessagesList = lists:map(fun(Message) -> 
-            lists:concat([Message,",\n\t"])
-            end, 
-            Messages),
-            Aux = lists:sublist(MessagesList,string:len(MessagesList)-1)++string:slice(lists:last(MessagesList),0,string:len(lists:last(MessagesList))-3),
-            Reply = list_to_binary(lists:concat(["{",Aux,"}"])),
-            cowboy_req:reply(200,#{<<"content-type">> => <<"application/json; charset=utf-8">>},Reply, Req0)
+        case Messages of
+            [] ->
+                cowboy_req:reply(200,#{<<"content-type">> => <<"application/json; charset=utf-8">>},list_to_binary(lists:concat(["{","}"])), Req0);
+            _Else ->
+                MessagesList = lists:map(fun(Message) -> 
+                    lists:concat([Message,",\n\t"])
+                    end, 
+                    Messages
+                ),
+                Aux = lists:sublist(MessagesList,string:len(MessagesList)-1)++string:slice(lists:last(MessagesList),0,string:len(lists:last(MessagesList))-3),
+                Reply = list_to_binary(lists:concat(["{",Aux,"}"])),
+                cowboy_req:reply(200,#{<<"content-type">> => <<"application/json; charset=utf-8">>},Reply, Req0)
+        end
     catch
         _Reason ->
             cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, "{\"Error getting game logs\": \"\"}" , Req0)
