@@ -199,12 +199,12 @@ session_handler(PlayerDetails, Players, SessionId, PlayersOnline, HostId, GameSt
         {broadcast, Message, Broadcast_handler_pid}->
             % PlayerID,City,Action~
             try
-                [PlayerId, SimValues, Region, ActionId, MessageBody] = string:tokens(Message, "|"),
+                [PlayerId, SimValues, Region, ActionId] = string:tokens(Message, "|"),
                 PlayerVerification = lists:member(PlayerId, dict:fetch_keys(Players)),
                 if PlayerVerification == false ->
                     throw("Not part of this game");
                 true ->
-                    Message_to_publish = lists:concat([ActionId,"|",Region,"|",PlayerId,"|",MessageBody]),
+                    Message_to_publish = lists:concat([ActionId,"|",Region,"|",PlayerId]),
                     global:send(localDB,{save_msg, SessionId, SimValues, PlayerId, Region, ActionId}),
                     mqttMessenger:publish(atom_to_list(SessionId),Message_to_publish),
                     Broadcast_handler_pid ! {success, Message_to_publish}

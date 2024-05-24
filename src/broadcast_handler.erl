@@ -22,9 +22,9 @@ init(Req0, State) ->
 
 processBody(PostBody, Req0) ->
     case jsone:decode(PostBody, [{object_format, map}]) of
-        % playerId, sessionId, region, {SimulationValues}, actionId, messageBody
-    #{<<"serverId">> := ServerId,<<"simValues">> := SimValues,<<"clientId">> := ClientId, <<"region">> := Region, <<"actionCode">> := ActionId, <<"messageBody">> := Body} ->
-        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(SimValues),"|",binary_to_list(Region),"|",integer_to_list(ActionId),"|",binary_to_list(Body)]),
+        % playerId, sessionId, region, {SimulationValues}, actionId
+    #{<<"serverId">> := ServerId,<<"simValues">> := SimValues,<<"clientId">> := ClientId, <<"region">> := Region, <<"actionCode">> := ActionId} ->
+        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(SimValues),"|",binary_to_list(Region),"|",integer_to_list(ActionId)]),
         broadcast(list_to_atom(binary_to_list(ServerId)),Message,Req0);
     _ ->
         cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, <<"Invalid or missing parameter">>, Req0)

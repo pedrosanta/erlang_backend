@@ -12,8 +12,7 @@ The endpoint requires the following JSON:
     "clientId": "client1",
     "region": "example_region",
     "simValues": "[]",
-    "actionCode": 0,
-    "messageBody": "Broadcast Example"
+    "actionCode": 0
 }
 ```
 
@@ -21,7 +20,7 @@ In case of success, the reply is a <mark style="color:green;">200 OK</mark>, wit
 
 ```json
 {
-    "Broadcasted": "0|example_region|client1|Broadcast Example"
+    "Broadcasted": "0|example_region|client1"
 }
 ```
 
