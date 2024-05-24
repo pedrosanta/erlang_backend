@@ -8,12 +8,12 @@
 -define(SERVER, localDB).
 
 
--record(game_actions, {playerId, sessionId, simValues, region, actionId, messageBody, creationDay, creationHour}).
+-record(game_actions, {playerId, sessionId, simValues, region, actionId, creationDay, creationHour}).
 -record(game_sessions, {sessionId, gameSessionFile, player1, player2, player3, player4, ended, created_on}).
  % TODO TABELA DE FEEDBACK - FALAR 1º COM DANIELA E LICINIO
 
-save_message(GameSessionId, PlayerId, City, Body) ->
-  global:send(?SERVER, {save_msg, GameSessionId, PlayerId, City, Body}).
+save_message(GameSessionId, PlayerId, City) ->
+  global:send(?SERVER, {save_msg, GameSessionId, PlayerId, City}).
 
 find_messages(GameSessionId) ->
   global:send(?SERVER, {find_msgs, GameSessionId, self()}),
@@ -35,8 +35,8 @@ run(FirstTime) ->
       run(false);
     true ->
       receive
-        {save_msg, GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody} ->
-          db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody),
+        {save_msg, GameSessionId, SimValues, PlayerId, Region, ActionId} ->
+          db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId),
           run(FirstTime);
         {save_game, GameSessionId, GameFile, Players, Ended} ->
           db_save_game(GameSessionId, GameFile, Players, Ended),
@@ -61,7 +61,7 @@ db_get_logs(GameSessionId) ->
                         M#game_actions.sessionId =:= GameSessionId]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"-",Msg#game_actions.messageBody,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|SimValues\":",Msg#game_actions.simValues])
+      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|SimValues\":",Msg#game_actions.simValues])
       end, 
       Results)
   end,
@@ -76,7 +76,7 @@ db_get_logs() ->
     Query = qlc:q([M || M <- mnesia:table(game_actions)]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.messageBody,",",Msg#game_actions.simValues])
+      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.simValues])
       end, 
       Results)
   end,
@@ -97,12 +97,12 @@ db_wipe_logs() ->
   end.
   
 
-db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody) ->
+db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId) ->
   F = fun() ->
     {{Year,Month,Day},{Hour,Minute,Second}} = calendar:universal_time(),
     CreationDay = lists:concat([Day,"/",Month,"/",Year]),
     CreationHour = lists:concat([Hour,":",Minute,":",Second]),
-    mnesia:write(#game_actions{playerId=PlayerId, sessionId=GameSessionId, simValues=SimValues, region=Region, actionId=ActionId, messageBody=MessageBody, creationDay=CreationDay, creationHour=CreationHour})
+    mnesia:write(#game_actions{playerId=PlayerId, sessionId=GameSessionId, simValues=SimValues, region=Region, actionId=ActionId, creationDay=CreationDay, creationHour=CreationHour})
    
   end,
   case mnesia:transaction(F) of
@@ -235,7 +235,7 @@ export_logs() ->
   {ok, FilePath} = application:get_env(gateway, log_file_path),
   {ok, Device} = file:open(FilePath, [write]),
 
-  Headers = string:join(["Day", "Hour", "Server", "Player", "Region", "ActionId", "Body", "Simulation Values"],","),
+  Headers = string:join(["Day", "Hour", "Server", "Player", "Region", "ActionId", "Simulation Values"],","),
   io:format(Device, "~s~n", [Headers]),
   write_csv(Device, RawData),
   file:close(Device).
@@ -250,7 +250,7 @@ export_logs_between_dates(DateString, EndDateString) ->
                   ]),
     Results = qlc:eval(Query),
     lists:map(fun(Msg) -> 
-      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.messageBody,",",Msg#game_actions.simValues])
+      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.simValues])
       end, 
       Results)
   end,

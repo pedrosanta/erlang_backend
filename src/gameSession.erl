@@ -205,7 +205,7 @@ session_handler(PlayerDetails, Players, SessionId, PlayersOnline, HostId, GameSt
                     throw("Not part of this game");
                 true ->
                     Message_to_publish = lists:concat([ActionId,"|",Region,"|",PlayerId,"|",MessageBody]),
-                    global:send(localDB,{save_msg, SessionId, SimValues, PlayerId, Region, ActionId, MessageBody}),
+                    global:send(localDB,{save_msg, SessionId, SimValues, PlayerId, Region, ActionId}),
                     mqttMessenger:publish(atom_to_list(SessionId),Message_to_publish),
                     Broadcast_handler_pid ! {success, Message_to_publish}
                 end
