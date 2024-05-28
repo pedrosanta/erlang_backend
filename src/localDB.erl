@@ -8,7 +8,27 @@
 -define(SERVER, localDB).
 
 
--record(game_actions, {playerId, sessionId, simValues, region, actionId, creationDay, creationHour}).
+-record(game_actions, {
+  playerId,
+  sessionId,
+  region,
+  actionId,
+  creationDay,
+  creationHour,
+  cost,
+  deaths,
+  infected,
+  contactRate,
+  vaccinationRate,
+  budget,
+  populationTotal,
+  quarantined,
+  susceptible,
+  exposed,
+  hospitalized,
+  immunized 
+}).
+
 -record(game_sessions, {sessionId, gameSessionFile, player1, player2, player3, player4, ended, created_on}).
  % TODO TABELA DE FEEDBACK - FALAR 1º COM DANIELA E LICINIO
 
@@ -102,7 +122,27 @@ db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId) ->
     {{Year,Month,Day},{Hour,Minute,Second}} = calendar:universal_time(),
     CreationDay = lists:concat([Day,"/",Month,"/",Year]),
     CreationHour = lists:concat([Hour,":",Minute,":",Second]),
-    mnesia:write(#game_actions{playerId=PlayerId, sessionId=GameSessionId, simValues=SimValues, region=Region, actionId=ActionId, creationDay=CreationDay, creationHour=CreationHour})
+    #{"cost" := Cost, "deaths" := Deaths, "infected" := Infected, "contactRate" := ContactRate, "vaccinationRate" := VaccinationRate, "budget" := Budget, "populationTotal" := PopulationTotal, "quarantined" := Quarantined, "susceptible" := Susceptible, "exposed" := Exposed, "hospitalized" := Hospitalized, "immunized" := Immunized} = SimValues,
+    mnesia:write(#game_actions{
+      playerId=PlayerId,
+      sessionId=GameSessionId,
+      region=Region,
+      actionId=ActionId,
+      creationDay=CreationDay,
+      creationHour=CreationHour,
+      cost=Cost,
+      deaths=Deaths,
+      infected=Infected,
+      contactRate=ContactRate,
+      vaccinationRate=VaccinationRate,
+      budget=Budget,
+      populationTotal=PopulationTotal,
+      quarantined=Quarantined,
+      susceptible=Susceptible,
+      exposed=Exposed,
+      hospitalized=Hospitalized,
+      immunized=Immunized
+    })
    
   end,
   case mnesia:transaction(F) of

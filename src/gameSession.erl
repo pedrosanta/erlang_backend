@@ -196,10 +196,10 @@ session_handler(PlayerDetails, Players, SessionId, PlayersOnline, HostId, GameSt
                 HandlerId ! _Reason
             end,
             session_handler(PlayerDetails, Players, SessionId, PlayersOnline, HostId, GameState, OnGoing);
-        {broadcast, Message, Broadcast_handler_pid}->
+        {broadcast, Message, SimValues, Broadcast_handler_pid}->
             % PlayerID,City,Action~
             try
-                [PlayerId, SimValues, Region, ActionId] = string:tokens(Message, "|"),
+                [PlayerId, Region, ActionId] = string:tokens(Message, "|"),
                 PlayerVerification = lists:member(PlayerId, dict:fetch_keys(Players)),
                 if PlayerVerification == false ->
                     throw("Not part of this game");
