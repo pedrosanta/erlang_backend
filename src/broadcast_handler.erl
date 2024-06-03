@@ -22,12 +22,13 @@ init(Req0, State) ->
 
 processBody(PostBody, Req0) ->
     case jsone:decode(PostBody, [{object_format, map}]) of
-        % playerId, sessionId, region, {SimulationValues}, actionId, cost, deaths, infected, contactRate, vaccinationRate, budget, populationTotal, quarantined, susceptible, exposed, hospitalized, immunized
+        % playerId, sessionId, region, actionId, messageBody, cost, deaths, infected, contactRate, vaccinationRate, budget, populationTotal, quarantined, susceptible, exposed, hospitalized, immunized
     #{
         <<"serverId">> := ServerId,
         <<"clientId">> := ClientId,
         <<"region">> := Region,
         <<"actionCode">> := ActionId,
+        <<"messageBody">> := MessageBody,
         <<"cost">> := Cost,
         <<"deaths">> := Deaths,
         <<"infected">> := Infected,
@@ -42,7 +43,7 @@ processBody(PostBody, Req0) ->
         <<"immunized">> := Immunized
     } ->
         SimValues = #{"cost" => Cost, "deaths" => Deaths, "infected" => Infected, "contactRate" => ContactRate, "vaccinationRate" => VaccinationRate, "budget" => Budget, "populationTotal" => PopulationTotal, "quarantined" => Quarantined, "susceptible" => Susceptible, "exposed" => Exposed, "hospitalized" => Hospitalized, "immunized" => Immunized},
-        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(Region),"|",integer_to_list(ActionId)]),
+        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(Region),"|",integer_to_list(ActionId),"|",binary_to_list(MessageBody)]),
         broadcast(list_to_atom(binary_to_list(ServerId)),Message,SimValues,Req0);
     _ ->
         cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, <<"Invalid or missing parameter">>, Req0)
