@@ -11,9 +11,20 @@ The endpoint requires the following JSON:
     "serverId": "Server_1",
     "clientId": "client1",
     "region": "example_region",
-    "simValues": "[]",
     "actionCode": 0,
-    "messageBody": "Broadcast Example"
+    "messageBody": "Broadcast Example",
+    "cost": 0.0,
+    "deaths": 0,
+    "infected": 0.0,
+    "contactRate": 0.0,
+    "vaccinationRate": 0.0,
+    "budget": 0.0,
+    "populationTotal": 0,
+    "quarantined": 0,
+    "susceptible": 0,
+    "exposed": 0,
+    "hospitalized": 0,
+    "immunized": 0
 }
 ```
 

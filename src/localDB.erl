@@ -8,12 +8,32 @@
 -define(SERVER, localDB).
 
 
--record(game_actions, {playerId, sessionId, simValues, region, actionId, messageBody, creationDay, creationHour}).
+-record(game_actions, {
+  playerId,
+  sessionId,
+  region,
+  actionId,
+  creationDay,
+  creationHour,
+  cost,
+  deaths,
+  infected,
+  contactRate,
+  vaccinationRate,
+  budget,
+  populationTotal,
+  quarantined,
+  susceptible,
+  exposed,
+  hospitalized,
+  immunized 
+}).
+
 -record(game_sessions, {sessionId, gameSessionFile, player1, player2, player3, player4, ended, created_on}).
  % TODO TABELA DE FEEDBACK - FALAR 1º COM DANIELA E LICINIO
 
-save_message(GameSessionId, PlayerId, City, Body) ->
-  global:send(?SERVER, {save_msg, GameSessionId, PlayerId, City, Body}).
+save_message(GameSessionId, PlayerId, City) ->
+  global:send(?SERVER, {save_msg, GameSessionId, PlayerId, City}).
 
 find_messages(GameSessionId) ->
   global:send(?SERVER, {find_msgs, GameSessionId, self()}),
@@ -35,8 +55,8 @@ run(FirstTime) ->
       run(false);
     true ->
       receive
-        {save_msg, GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody} ->
-          db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody),
+        {save_msg, GameSessionId, SimValues, PlayerId, Region, ActionId} ->
+          db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId),
           run(FirstTime);
         {save_game, GameSessionId, GameFile, Players, Ended} ->
           db_save_game(GameSessionId, GameFile, Players, Ended),
@@ -61,7 +81,8 @@ db_get_logs(GameSessionId) ->
                         M#game_actions.sessionId =:= GameSessionId]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"-",Msg#game_actions.messageBody,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|SimValues\":",Msg#game_actions.simValues])
+      % TODO: Review this, pass SimValues here again for the back office
+      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region])
       end, 
       Results)
   end,
@@ -76,7 +97,26 @@ db_get_logs() ->
     Query = qlc:q([M || M <- mnesia:table(game_actions)]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.messageBody,",",Msg#game_actions.simValues])
+      lists:concat([
+        Msg#game_actions.creationDay,",",
+        Msg#game_actions.creationHour,",",
+        Msg#game_actions.sessionId,",",
+        Msg#game_actions.playerId,",",
+        Msg#game_actions.region,",",
+        Msg#game_actions.actionId,",",
+        Msg#game_actions.cost,",",
+        Msg#game_actions.deaths,",",
+        Msg#game_actions.infected,",",
+        Msg#game_actions.contactRate,",",
+        Msg#game_actions.vaccinationRate,",",
+        Msg#game_actions.budget,",",
+        Msg#game_actions.populationTotal,",",
+        Msg#game_actions.quarantined,",",
+        Msg#game_actions.susceptible,",",
+        Msg#game_actions.exposed,",",
+        Msg#game_actions.hospitalized,",",
+        Msg#game_actions.immunized
+      ])
       end, 
       Results)
   end,
@@ -97,12 +137,32 @@ db_wipe_logs() ->
   end.
   
 
-db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId, MessageBody) ->
+db_write_log(GameSessionId, SimValues, PlayerId, Region, ActionId) ->
   F = fun() ->
     {{Year,Month,Day},{Hour,Minute,Second}} = calendar:universal_time(),
     CreationDay = lists:concat([Day,"/",Month,"/",Year]),
     CreationHour = lists:concat([Hour,":",Minute,":",Second]),
-    mnesia:write(#game_actions{playerId=PlayerId, sessionId=GameSessionId, simValues=SimValues, region=Region, actionId=ActionId, messageBody=MessageBody, creationDay=CreationDay, creationHour=CreationHour})
+    #{"cost" := Cost, "deaths" := Deaths, "infected" := Infected, "contactRate" := ContactRate, "vaccinationRate" := VaccinationRate, "budget" := Budget, "populationTotal" := PopulationTotal, "quarantined" := Quarantined, "susceptible" := Susceptible, "exposed" := Exposed, "hospitalized" := Hospitalized, "immunized" := Immunized} = SimValues,
+    mnesia:write(#game_actions{
+      playerId=PlayerId,
+      sessionId=GameSessionId,
+      region=Region,
+      actionId=ActionId,
+      creationDay=CreationDay,
+      creationHour=CreationHour,
+      cost=Cost,
+      deaths=Deaths,
+      infected=Infected,
+      contactRate=ContactRate,
+      vaccinationRate=VaccinationRate,
+      budget=Budget,
+      populationTotal=PopulationTotal,
+      quarantined=Quarantined,
+      susceptible=Susceptible,
+      exposed=Exposed,
+      hospitalized=Hospitalized,
+      immunized=Immunized
+    })
    
   end,
   case mnesia:transaction(F) of
@@ -235,7 +295,26 @@ export_logs() ->
   {ok, FilePath} = application:get_env(gateway, log_file_path),
   {ok, Device} = file:open(FilePath, [write]),
 
-  Headers = string:join(["Day", "Hour", "Server", "Player", "Region", "ActionId", "Body", "Simulation Values"],","),
+  Headers = string:join([
+    "Day",
+    "Hour",
+    "Server",
+    "Player",
+    "Region",
+    "ActionId",
+    "Cost",
+    "Deaths",
+    "Infected",
+    "ContactRate",
+    "VaccinationRate",
+    "Budget",
+    "PopulationTotal",
+    "Quarantined",
+    "Susceptible",
+    "Exposed",
+    "Hospitalized",
+    "Immunized"    
+  ],","),
   io:format(Device, "~s~n", [Headers]),
   write_csv(Device, RawData),
   file:close(Device).
@@ -250,7 +329,26 @@ export_logs_between_dates(DateString, EndDateString) ->
                   ]),
     Results = qlc:eval(Query),
     lists:map(fun(Msg) -> 
-      lists:concat([Msg#game_actions.creationDay,",",Msg#game_actions.creationHour,",",Msg#game_actions.sessionId,",",Msg#game_actions.playerId,",", Msg#game_actions.region,",",Msg#game_actions.actionId,",",Msg#game_actions.messageBody,",",Msg#game_actions.simValues])
+      lists:concat([
+        Msg#game_actions.creationDay,",",
+        Msg#game_actions.creationHour,",",
+        Msg#game_actions.sessionId,",",
+        Msg#game_actions.playerId,",",
+        Msg#game_actions.region,",",
+        Msg#game_actions.actionId,",",
+        Msg#game_actions.cost,",",
+        Msg#game_actions.deaths,",",
+        Msg#game_actions.infected,",",
+        Msg#game_actions.contactRate,",",
+        Msg#game_actions.vaccinationRate,",",
+        Msg#game_actions.budget,",",
+        Msg#game_actions.populationTotal,",",
+        Msg#game_actions.quarantined,",",
+        Msg#game_actions.susceptible,",",
+        Msg#game_actions.exposed,",",
+        Msg#game_actions.hospitalized,",",
+        Msg#game_actions.immunized
+      ])
       end, 
       Results)
   end,
@@ -259,7 +357,27 @@ export_logs_between_dates(DateString, EndDateString) ->
       Path = lists:concat(["./logs_",utils:format_date_string_without_slashes(DateString),"_to_",utils:format_date_string_without_slashes(EndDateString),".csv"]),
       {ok, Device} = file:open(Path, [write]),
 
-      Headers = string:join(["Day", "Hour", "Server", "Player", "Region", "ActionId", "Body", "Simulation Values"],","),
+      Headers = string:join([
+        "Day",
+        "Hour",
+        "Server",
+        "Player",
+        "Region",
+        "ActionId",
+        "Body",
+        "Cost",
+        "Deaths",
+        "Infected",
+        "ContactRate",
+        "VaccinationRate",
+        "Budget",
+        "PopulationTotal",
+        "Quarantined",
+        "Susceptible",
+        "Exposed",
+        "Hospitalized",
+        "Immunized"
+      ],","),
       io:format(Device, "~s~n", [Headers]),
       write_csv(Device, Value),
       file:close(Device);

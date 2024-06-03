@@ -22,22 +22,41 @@ init(Req0, State) ->
 
 processBody(PostBody, Req0) ->
     case jsone:decode(PostBody, [{object_format, map}]) of
-        % playerId, sessionId, region, {SimulationValues}, actionId, messageBody
-    #{<<"serverId">> := ServerId,<<"simValues">> := SimValues,<<"clientId">> := ClientId, <<"region">> := Region, <<"actionCode">> := ActionId, <<"messageBody">> := Body} ->
-        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(SimValues),"|",binary_to_list(Region),"|",integer_to_list(ActionId),"|",binary_to_list(Body)]),
-        broadcast(list_to_atom(binary_to_list(ServerId)),Message,Req0);
+        % playerId, sessionId, region, actionId, messageBody, cost, deaths, infected, contactRate, vaccinationRate, budget, populationTotal, quarantined, susceptible, exposed, hospitalized, immunized
+    #{
+        <<"serverId">> := ServerId,
+        <<"clientId">> := ClientId,
+        <<"region">> := Region,
+        <<"actionCode">> := ActionId,
+        <<"messageBody">> := MessageBody,
+        <<"cost">> := Cost,
+        <<"deaths">> := Deaths,
+        <<"infected">> := Infected,
+        <<"contactRate">> := ContactRate,
+        <<"vaccinationRate">> := VaccinationRate,
+        <<"budget">> := Budget,
+        <<"populationTotal">> := PopulationTotal,
+        <<"quarantined">> := Quarantined,
+        <<"susceptible">> := Susceptible,
+        <<"exposed">> := Exposed,
+        <<"hospitalized">> := Hospitalized,
+        <<"immunized">> := Immunized
+    } ->
+        SimValues = #{"cost" => Cost, "deaths" => Deaths, "infected" => Infected, "contactRate" => ContactRate, "vaccinationRate" => VaccinationRate, "budget" => Budget, "populationTotal" => PopulationTotal, "quarantined" => Quarantined, "susceptible" => Susceptible, "exposed" => Exposed, "hospitalized" => Hospitalized, "immunized" => Immunized},
+        Message = lists:concat([binary_to_list(ClientId),"|",binary_to_list(Region),"|",integer_to_list(ActionId),"|",binary_to_list(MessageBody)]),
+        broadcast(list_to_atom(binary_to_list(ServerId)),Message,SimValues,Req0);
     _ ->
         cowboy_req:reply(400, #{<<"content-type">> => <<"application/json; charset=utf-8">>}, <<"Invalid or missing parameter">>, Req0)
     end.
     
-broadcast(ServerName, Message,Req0) ->
+broadcast(ServerName, Message, SimValues, Req0) ->
     case global:whereis_name(ServerName) of
         undefined ->
             cowboy_req:reply(200,
             #{<<"content-type">> => <<"application/json; charset=utf-8">>},
             "{\"Exists\": false,\n\t\"Error\": \"This game no longer exists.\"}", Req0);
         _->
-            global:send(ServerName,{broadcast,Message, self()}),
+            global:send(ServerName,{broadcast,Message,SimValues, self()}),
             receive
             {success, Published_Message} ->
                 Reply = list_to_binary(lists:concat(["{\"Broadcasted\": \"",Published_Message,"\"}"])),
