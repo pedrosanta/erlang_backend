@@ -81,8 +81,21 @@ db_get_logs(GameSessionId) ->
                         M#game_actions.sessionId =:= GameSessionId]),
     Results = qlc:e(Query),
     lists:map(fun(Msg) -> 
-      % TODO: Review this, pass SimValues here again for the back office
-      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region])
+      SimValues = #{
+        "cost" => Msg#game_actions.cost,
+        "deaths" => Msg#game_actions.deaths,
+        "infected" => Msg#game_actions.infected,
+        "contactRate" => Msg#game_actions.contactRate,
+        "vaccinationRate" => Msg#game_actions.vaccinationRate,
+        "budget" => Msg#game_actions.budget,
+        "populationTotal" => Msg#game_actions.populationTotal,
+        "quarantined" => Msg#game_actions.quarantined,
+        "susceptible" => Msg#game_actions.susceptible,
+        "exposed" => Msg#game_actions.exposed,
+        "hospitalized" => Msg#game_actions.hospitalized,
+        "immunized" => Msg#game_actions.immunized
+      },
+      lists:concat(["\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|Body\":\"",Msg#game_actions.actionId,"|", Msg#game_actions.playerId,"-",Msg#game_actions.region,"\",\n\t\"",Msg#game_actions.creationDay,"|",Msg#game_actions.creationHour,"|",Msg#game_actions.region,"|SimValues\":",maps:to_list(SimValues)])
       end, 
       Results)
   end,
